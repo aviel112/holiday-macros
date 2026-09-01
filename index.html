@@ -200,7 +200,9 @@
 </div>
 
 <script>
-const CRM_URL = "https://aviel-crm-production.up.railway.app/api/leads";
+const CRM_URL   = "https://aviel-crm-production.up.railway.app/api/leads";
+/* Google Sheets — הדבק כאן את כתובת ה-Web App מ-Apps Script (מסתיים ב-/exec) */
+const SHEET_URL = "PASTE_APPS_SCRIPT_WEB_APP_URL_HERE";
 
 /* ---------- GATE ---------- */
 const gBtn = document.getElementById('gBtn');
@@ -219,18 +221,35 @@ gBtn.addEventListener('click', async () => {
   err.style.display = 'none';
   gBtn.textContent = 'רגע...'; gBtn.disabled = true;
 
-  try {
-    await fetch(CRM_URL, {
+  const lead = {
+    firstName: first,
+    lastName:  last,
+    name:      (first + ' ' + last).trim(),
+    age:       +age,
+    phone:     phone,
+    funnel:    'holiday-macros',
+    createdAt: new Date().toISOString()
+  };
+
+  /* שולחים במקביל ל-CRM ולגוגל שיטס — נכשל אחד, השני עדיין עובר */
+  const sends = [];
+
+  sends.push(fetch(CRM_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(lead)
+  }).catch(() => {}));
+
+  if (SHEET_URL && SHEET_URL.indexOf('http') === 0) {
+    sends.push(fetch(SHEET_URL, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        name: (first + ' ' + last).trim(),
-        phone: phone,
-        age: +age,
-        funnel: 'holiday-macros'
-      })
-    });
-  } catch (e) { /* לא חוסמים את המשתמש אם ה-CRM לא זמין */ }
+      /* text/plain = בקשה פשוטה בלי preflight, עובר ל-Apps Script */
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(lead)
+    }).catch(() => {}));
+  }
+
+  try { await Promise.allSettled(sends); } catch (e) {}
 
   document.getElementById('gate').style.display = 'none';
   document.getElementById('app').style.display = 'block';
