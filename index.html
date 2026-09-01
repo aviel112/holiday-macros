@@ -43,6 +43,10 @@
     font-family:'Heebo'; font-size:16.5px; font-weight:500; padding:14px 15px; outline:none; text-align:right;
     transition:border-color .15s}
   input:focus{border-color:var(--gold)}
+  /* שדה אינסטגרם עם @ קבוע */
+  .field.ig input{padding-right:34px}
+  .field.ig::before{content:'@'; position:absolute; right:14px; top:50%; transform:translateY(-50%);
+    color:var(--gold); font-weight:700; font-size:16.5px; pointer-events:none}
   .btn{width:100%; margin-top:8px; padding:16px; border:none; border-radius:12px; cursor:pointer;
     background:linear-gradient(120deg,var(--gold),var(--gold-2)); color:#141414; font-family:'Heebo';
     font-size:17.5px; font-weight:800; transition:transform .12s}
@@ -120,11 +124,14 @@
       <div class="field"><input id="gFirst" type="text" placeholder="שם פרטי" autocomplete="given-name"></div>
       <div class="field"><input id="gLast" type="text" placeholder="שם משפחה" autocomplete="family-name"></div>
     </div>
-    <div class="field"><input id="gAge" type="number" inputmode="numeric" placeholder="גיל" min="14" max="99"></div>
-    <div class="field"><input id="gPhone" type="tel" inputmode="tel" placeholder="טלפון" autocomplete="tel"></div>
+    <div class="row2">
+      <div class="field"><input id="gAge" type="number" inputmode="numeric" placeholder="גיל" min="14" max="99"></div>
+      <div class="field"><input id="gPhone" type="tel" inputmode="tel" placeholder="טלפון" autocomplete="tel"></div>
+    </div>
+    <div class="field ig"><input id="gIg" type="text" placeholder="שם משתמש באינסטגרם" autocomplete="off" spellcheck="false"></div>
 
     <button class="btn" id="gBtn">כניסה למחשבון ←</button>
-    <div class="err" id="gErr">בבקשה מלא שם, גיל וטלפון תקין (לפחות 9 ספרות).</div>
+    <div class="err" id="gErr">בבקשה מלא שם, גיל, טלפון תקין (לפחות 9 ספרות) ושם משתמש באינסטגרם.</div>
     <p class="privacy">הפרטים נשמרים אצל אביאל עמירה בלבד לצורך ליווי האתגר. לא מוסרים לאף אחד.</p>
   </div>
 </div>
@@ -177,18 +184,10 @@
 
         <div class="rules">
           <h3><span class="ic">💡</span> 2 עקרונות ברזל לארוחות החג</h3>
-          <div class="r">
-            <div class="n">1</div>
-            <div class="x"><b>חלבון וירקות קודם</b><p>תמיד תתחיל את הצלחת במנת חלבון גדולה לצד ירקות — לפני שאתה ניגש לשאר המנות.</p></div>
-          </div>
-          <div class="r">
-            <div class="n">2</div>
-            <div class="x"><b>שתיית מים</b><p>שתה 2 כוסות מים חצי שעה לפני הארוחה כדי להגיע שבע ומפוקס.</p></div>
-          </div>
+          <div id="rulesList"></div>
         </div>
 
-        <p class="closer">בוא נעבור את החגים האלה בשיא הכושר! 💪</p>
-        <button class="recalc" id="recalcBtn">חישוב מחדש עם משקל אחר</button>
+        <p class="closer" id="closer">בוא נעבור את החגים האלה בשיא הכושר! 💪</p>
       </div>
     </div>
 
@@ -201,8 +200,55 @@
 
 <script>
 const CRM_URL   = "https://aviel-crm-production.up.railway.app/api/leads";
-/* Google Sheets — הדבק כאן את כתובת ה-Web App מ-Apps Script (מסתיים ב-/exec) */
+/* Google Sheets — כתובת ה-Web App מ-Apps Script (מסתיים ב-/exec) */
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbxGLxhGtl46bYtV2CATLrlF0fkS7UoqVwIeIwt3QqO7KUThRHWpdXYQQIvB87Aehx_x0Q/exec";
+
+/* ---------- מאגר עקרונות — בכל חישוב מוגרלים 2 שונים ---------- */
+const PRINCIPLES = [
+  ['חלבון וירקות קודם',     'תמיד תתחיל את הצלחת במנת חלבון גדולה לצד ירקות — לפני שאתה ניגש לשאר המנות.'],
+  ['שתיית מים',             'שתה 2 כוסות מים חצי שעה לפני הארוחה כדי להגיע שבע ומפוקס.'],
+  ['אל תגיע רעב לשולחן',    'לא לחסוך ארוחות כל היום "בשביל הערב" — תגיע אחרי ארוחת חלבון קטנה ותאכל בשליטה.'],
+  ['צלחת אחת, ישיבה אחת',   'תמלא צלחת אחת מכל מה שאתה רוצה, ותשב לאכול אותה. בלי לנשנש מעל הסירים בעמידה.'],
+  ['בוחרים פינוק אחד',      'לא צריך לוותר על הכל — תבחר את המנה שהכי שווה לך, ותיהנה ממנה בלי אשמה.'],
+  ['לועסים לאט',            'תניח את המזלג בין ביסים. לוקח למוח 20 דקות להרגיש שובע — תן לו את הזמן.'],
+  ['אלכוהול נספר כפחמימה',  'כוס יין או בירה זה 120-150 קלוריות. אם שותה — תוריד מהפחמימות של הארוחה, לא מהחלבון.'],
+  ['הליכה אחרי הארוחה',     '15 דקות הליכה אחרי הארוחה מורידות את קפיצת הסוכר משמעותית. תצא לסיבוב עם מישהו.'],
+  ['חג אחד זה לא שובר',     'ארוחה אחת לא הורסת שבוע. מה שהורס זה "כבר קלקלתי" שנמשך 3 ימים. חוזרים למסלול בארוחה הבאה.'],
+  ['אימון ביום החג',        'תזיז את האימון לבוקר של החג. הגוף מנצל טוב יותר את הפחמימות ואתה נכנס לארוחה עם ראש אחר.'],
+  ['לא שותים קלוריות',      'מיץ, קולה ומשקאות מתוקים זה סוכר שלא משביע. מים, סודה או דיאט — וחסכת מאות קלוריות.'],
+  ['שינה לפני החג',         'לילה קצר מעלה את הרעב למחרת ב-20%. תישן טוב לפני ערב החג ותקבל החלטות אחרות.']
+];
+
+const CLOSERS = [
+  'בוא נעבור את החגים האלה בשיא הכושר! 💪',
+  'החגים הם לא תירוץ — הם הזדמנות להוכיח לעצמך. 💪',
+  'עקביות מנצחת מושלמות. נתראה בצד השני של החגים! 💪',
+  'תעשה את זה נכון עכשיו — ותודה לעצמך אחרי החגים. 💪'
+];
+
+function pick(arr, n) {
+  const copy = arr.slice();
+  const out = [];
+  while (out.length < n && copy.length) {
+    out.push(copy.splice(Math.floor(Math.random() * copy.length), 1)[0]);
+  }
+  return out;
+}
+
+function renderPrinciples() {
+  const list = document.getElementById('rulesList');
+  list.innerHTML = '';
+  pick(PRINCIPLES, 2).forEach((p, i) => {
+    const row = document.createElement('div');
+    row.className = 'r';
+    row.innerHTML = '<div class="n">' + (i + 1) + '</div>' +
+                    '<div class="x"><b></b><p></p></div>';
+    row.querySelector('b').textContent = p[0];
+    row.querySelector('p').textContent = p[1];
+    list.appendChild(row);
+  });
+  document.getElementById('closer').textContent = pick(CLOSERS, 1)[0];
+}
 
 /* ---------- GATE ---------- */
 const gBtn = document.getElementById('gBtn');
@@ -211,10 +257,12 @@ gBtn.addEventListener('click', async () => {
   const last  = document.getElementById('gLast').value.trim();
   const age   = document.getElementById('gAge').value.trim();
   const phone = document.getElementById('gPhone').value.trim();
+  /* מנקים @ ורווחים — נשמר תמיד בפורמט אחיד */
+  const ig    = document.getElementById('gIg').value.trim().replace(/^@+/, '').replace(/\s+/g, '');
   const err   = document.getElementById('gErr');
 
   const digits = phone.replace(/\D/g, '');
-  if (first.length < 2 || digits.length < 9 || !age || +age < 14 || +age > 99) {
+  if (first.length < 2 || digits.length < 9 || !age || +age < 14 || +age > 99 || ig.length < 2) {
     err.style.display = 'block';
     return;
   }
@@ -227,6 +275,7 @@ gBtn.addEventListener('click', async () => {
     name:      (first + ' ' + last).trim(),
     age:       +age,
     phone:     phone,
+    instagram: '@' + ig,
     funnel:    'holiday-macros',
     createdAt: new Date().toISOString()
   };
@@ -284,6 +333,8 @@ function calc() {
   document.getElementById('barF').style.width = (fatCal / total * 100) + '%';
   document.getElementById('barC').style.width = (carbCal / total * 100) + '%';
 
+  renderPrinciples();   // עקרונות אחרים בכל חישוב
+
   const res = document.getElementById('result');
   res.style.display = 'block';
   res.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -291,12 +342,6 @@ function calc() {
 
 document.getElementById('calcBtn').addEventListener('click', calc);
 document.getElementById('weight').addEventListener('keydown', e => { if (e.key === 'Enter') calc(); });
-document.getElementById('recalcBtn').addEventListener('click', () => {
-  document.getElementById('result').style.display = 'none';
-  const w = document.getElementById('weight');
-  w.value = ''; w.focus();
-  document.querySelector('.calc-card').scrollIntoView({ behavior: 'smooth', block: 'center' });
-});
 </script>
 </body>
 </html>
