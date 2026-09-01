@@ -250,19 +250,45 @@ function renderPrinciples() {
   document.getElementById('closer').textContent = pick(CLOSERS, 1)[0];
 }
 
+/* ---------- תקינות טלפון ----------
+   מנרמל כל פורמט נפוץ ל-05XXXXXXXX ומוודא שזה נייד ישראלי אמיתי.
+   מקבל: 054-123-4567 | 0541234567 | +972541234567 | 00972-54-1234567 | 972541234567 */
+function normalizePhone(raw) {
+  let d = String(raw).replace(/\D/g, '');
+  if (d.indexOf('00972') === 0) d = '0' + d.slice(5);
+  else if (d.indexOf('972') === 0) d = '0' + d.slice(3);
+  return d;
+}
+function isValidMobile(d) {
+  return /^05\d{8}$/.test(d);   // 10 ספרות, מתחיל ב-05
+}
+
+/* ניקוי חי בזמן הקלדה — משאיר ספרות, + ומפרידים נפוצים */
+const phoneInput = document.getElementById('gPhone');
+phoneInput.addEventListener('input', () => {
+  phoneInput.value = phoneInput.value.replace(/[^\d+\-\s()]/g, '');
+});
+
 /* ---------- GATE ---------- */
 const gBtn = document.getElementById('gBtn');
 gBtn.addEventListener('click', async () => {
   const first = document.getElementById('gFirst').value.trim();
   const last  = document.getElementById('gLast').value.trim();
   const age   = document.getElementById('gAge').value.trim();
-  const phone = document.getElementById('gPhone').value.trim();
+  const phone = normalizePhone(document.getElementById('gPhone').value);
   /* מנקים @ ורווחים — נשמר תמיד בפורמט אחיד */
   const ig    = document.getElementById('gIg').value.trim().replace(/^@+/, '').replace(/\s+/g, '');
   const err   = document.getElementById('gErr');
 
-  const digits = phone.replace(/\D/g, '');
-  if (first.length < 2 || digits.length < 9 || !age || +age < 14 || +age > 99 || ig.length < 2) {
+  /* הודעת שגיאה ממוקדת — שהמשתמש ידע בדיוק מה חסר */
+  let msg = '';
+  if (first.length < 2)                     msg = 'בבקשה מלא שם פרטי.';
+  else if (!age || +age < 14 || +age > 99)  msg = 'בבקשה מלא גיל תקין (14–99).';
+  else if (!isValidMobile(phone))           msg = 'מספר הטלפון לא תקין — צריך נייד ישראלי, למשל 054-1234567.';
+  else if (ig.length < 2)                   msg = 'בבקשה מלא שם משתמש באינסטגרם.';
+
+  if (msg) {
+    err.textContent = msg;
     err.style.display = 'block';
     return;
   }
@@ -274,7 +300,7 @@ gBtn.addEventListener('click', async () => {
     lastName:  last,
     name:      (first + ' ' + last).trim(),
     age:       +age,
-    phone:     phone,
+    phone:     phone,          // תמיד בפורמט 05XXXXXXXX
     instagram: '@' + ig,
     funnel:    'holiday-macros',
     createdAt: new Date().toISOString()
