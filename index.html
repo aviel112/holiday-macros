@@ -199,7 +199,7 @@
 </div>
 
 <script>
-const CRM_URL   = "https://aviel-crm-production.up.railway.app/api/leads";
+const CRM_URL   = "https://script.google.com/macros/s/AKfycbxSkxJJ1ODs067IOfDkuosXzKX-pVi2W7uTcWKAS-7YFuh8PW9mrjSS8bNC4SaiRTkP/exec";
 /* Google Sheets — כתובת ה-Web App מ-Apps Script (מסתיים ב-/exec) */
 const SHEET_URL = "https://script.google.com/macros/s/AKfycbxGLxhGtl46bYtV2CATLrlF0fkS7UoqVwIeIwt3QqO7KUThRHWpdXYQQIvB87Aehx_x0Q/exec";
 
@@ -311,7 +311,7 @@ gBtn.addEventListener('click', async () => {
 
   sends.push(fetch(CRM_URL, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    mode:'no-cors', headers:{'Content-Type':'text/plain'},
     body: JSON.stringify(lead)
   }).catch(() => {}));
 
